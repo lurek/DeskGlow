@@ -1,0 +1,12 @@
+{
+  "uuid": "deskglow@zorin-extension",
+  "name": "DeskGlow",
+  "description": "A stylish glassmorphic desktop clock with date, day, and live system resource monitoring (Storage, RAM, CPU, Temp) for Zorin OS / GNOME.",
+  "settings-schema": "org.gnome.shell.extensions.deskglow",
+  "shell-version": [
+    "45",
+    "46",
+    "47"
+  ]
+}
+

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.deskglow" path="/org/gnome/shell/extensions/deskglow/">
+    <key name="position-x" type="i">
+      <default>-1</default>
+      <summary>Horizontal position offset on desktop</summary>
+    </key>
+    <key name="position-y" type="i">
+      <default>-1</default>
+      <summary>Vertical position offset on desktop</summary>
+    </key>
+    <key name="lock-position" type="b">
+      <default>false</default>
+      <summary>Lock position to prevent dragging</summary>
+    </key>
+    <key name="use-24h" type="b">
+      <default>false</default>
+      <summary>Use 24-hour clock format</summary>
+    </key>
+    <key name="show-seconds" type="b">
+      <default>false</default>
+      <summary>Show seconds in clock</summary>
+    </key>
+    <key name="show-background" type="b">
+      <default>true</default>
+      <summary>Show background container box</summary>
+    </key>
+    <key name="bg-opacity" type="d">
+      <default>0.85</default>
+      <summary>Background opacity level (0.0 to 1.0)</summary>
+    </key>
+    <key name="shadow-type" type="s">
+      <default>'glow'</default>
+      <summary>Shadow type: glow, dark, outline, none</summary>
+    </key>
+    <key name="shadow-blur" type="i">
+      <default>12</default>
+      <summary>Text shadow blur radius in px (0 to 30)</summary>
+    </key>
+    <key name="shadow-opacity" type="d">
+      <default>0.75</default>
+      <summary>Text shadow opacity (0.0 to 1.0)</summary>
+    </key>
+    <key name="time-font-size" type="i">
+      <default>96</default>
+      <summary>Time font size in px (48 to 140)</summary>
+    </key>
+    <key name="date-font-size" type="i">
+      <default>34</default>
+      <summary>Date font size in px (20 to 50)</summary>
+    </key>
+    <key name="stats-font-size" type="i">
+      <default>12</default>
+      <summary>Stats value font size in px (9 to 20)</summary>
+    </key>
+    <key name="stats-icon-size" type="i">
+      <default>22</default>
+      <summary>Stats icon size in px (16 to 32)</summary>
+    </key>
+    <key name="update-interval" type="i">
+      <default>1000</default>
+      <summary>Update interval in milliseconds</summary>
+    </key>
+  </schema>
+</schemalist>

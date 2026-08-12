@@ -1,0 +1,16 @@
+# Compiled GSettings schemas
+schemas/gschemas.compiled
+
+# Python Bytecode
+__pycache__/
+*.py[cod]
+
+# OS generated files
+.DS_Store
+.directory
+Thumbs.db
+
+# Backup & Temp files
+*.swp
+*~
+*.tmp
