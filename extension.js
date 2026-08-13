@@ -263,27 +263,21 @@ export default class DeskGlowExtension extends Extension {
                 
                 // Add some padding to intersection to make it feel more natural
                 let pad = 10;
-                if (frame.x < wx + ww + pad && frame.x + frame.width > wx - pad &&
-                    frame.y < wy + wh + pad && frame.y + frame.height > wy - pad) {
+                let doesOverlap = (frame.x < wx + ww + pad && frame.x + frame.width > wx - pad &&
+                                   frame.y < wy + wh + pad && frame.y + frame.height > wy - pad);
+
+                if (doesOverlap) {
                     overlapping = true;
                     break;
                 }
             }
-
+            
             if (overlapping && !this._isHiding) {
                 this._isHiding = true;
-                this._container.ease({
-                    opacity: 0,
-                    duration: 200,
-                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
-                });
+                this._container.opacity = 0;
             } else if (!overlapping && this._isHiding) {
                 this._isHiding = false;
-                this._container.ease({
-                    opacity: 255,
-                    duration: 200,
-                    mode: Clutter.AnimationMode.EASE_IN_QUAD
-                });
+                this._container.opacity = 255;
             }
         } catch (e) {
             global.log(`[DeskGlow] Error in _checkOverlap: ${e}`);
