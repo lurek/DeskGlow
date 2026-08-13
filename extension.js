@@ -294,8 +294,8 @@ export default class DeskGlowExtension extends Extension {
 
             if (posX < 0) {
                 this._applyPositionPreset(posX);
-            } else if (posX >= 0 && posY >= 0) {
-                this._container.set_position(posX, posY);
+            } else {
+                this._ensureVisiblePosition(posX, posY);
             }
         }
     }
@@ -304,56 +304,69 @@ export default class DeskGlowExtension extends Extension {
         let primaryMonitor = Main.layoutManager.primaryMonitor;
         if (!primaryMonitor || !this._container) return;
 
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            if (!this._container) return GLib.SOURCE_REMOVE;
+        let monX = primaryMonitor.x;
+        let monY = primaryMonitor.y;
+        let monW = primaryMonitor.width;
+        let monH = primaryMonitor.height;
 
-            let [minW, natW] = this._container.get_preferred_width(-1);
-            let [minH, natH] = this._container.get_preferred_height(-1);
+        let widgetWidth = (this._container.width && this._container.width > 100) ? this._container.width : 440;
+        let widgetHeight = (this._container.height && this._container.height > 100) ? this._container.height : 190;
 
-            let widgetWidth = Math.max(320, natW || this._container.width || 420);
-            let widgetHeight = Math.max(130, natH || this._container.height || 180);
+        let marginX = 30;
+        let marginY = 50;
+        let taskbarOffset = 70;
 
-            let monX = primaryMonitor.x;
-            let monY = primaryMonitor.y;
-            let monW = primaryMonitor.width;
-            let monH = primaryMonitor.height;
+        let targetX = monX + monW - widgetWidth - marginX;
+        let targetY = monY + monH - widgetHeight - taskbarOffset;
 
-            let marginX = 40;
-            let marginY = 60;
-            let taskbarOffset = 70; // Clearance for bottom dock/panel
+        if (code === -11) { // Bottom Left
+            targetX = monX + marginX;
+            targetY = monY + monH - widgetHeight - taskbarOffset;
+        } else if (code === -12) { // Top Right
+            targetX = monX + monW - widgetWidth - marginX;
+            targetY = monY + marginY;
+        } else if (code === -13) { // Top Left
+            targetX = monX + marginX;
+            targetY = monY + marginY;
+        } else if (code === -14) { // Center
+            targetX = monX + Math.round((monW - widgetWidth) / 2);
+            targetY = monY + Math.round((monH - widgetHeight) / 2);
+        } // code === -1 or -10 is Bottom Right (default)
 
-            let targetX = monX + monW - widgetWidth - marginX;
-            let targetY = monY + monH - widgetHeight - taskbarOffset;
+        let maxX = Math.max(10, monX + monW - widgetWidth - 10);
+        let maxY = Math.max(10, monY + monH - widgetHeight - 10);
 
-            if (code === -11) { // Bottom Left
-                targetX = monX + marginX;
-                targetY = monY + monH - widgetHeight - taskbarOffset;
-            } else if (code === -12) { // Top Right
-                targetX = monX + monW - widgetWidth - marginX;
-                targetY = monY + marginY;
-            } else if (code === -13) { // Top Left
-                targetX = monX + marginX;
-                targetY = monY + marginY;
-            } else if (code === -14) { // Center
-                targetX = monX + Math.round((monW - widgetWidth) / 2);
-                targetY = monY + Math.round((monH - widgetHeight) / 2);
-            } // code === -1 or -10 is Bottom Right (default)
+        let finalX = Math.min(maxX, Math.max(monX + 10, Math.round(targetX)));
+        let finalY = Math.min(maxY, Math.max(monY + 10, Math.round(targetY)));
 
-            let finalX = Math.max(10, Math.round(targetX));
-            let finalY = Math.max(10, Math.round(targetY));
+        this._container.set_position(finalX, finalY);
+    }
 
-            this._container.set_position(finalX, finalY);
+    _ensureVisiblePosition(posX, posY) {
+        let primaryMonitor = Main.layoutManager.primaryMonitor;
+        if (!primaryMonitor || !this._container) {
+            this._container.set_position(posX, posY);
+            return;
+        }
 
-            // Update settings to computed exact pixel numbers so SpinButtons sync cleanly
-            if (this._settings.get_int('position-x') !== finalX) {
-                this._settings.set_int('position-x', finalX);
-            }
-            if (this._settings.get_int('position-y') !== finalY) {
-                this._settings.set_int('position-y', finalY);
-            }
+        let monX = primaryMonitor.x;
+        let monY = primaryMonitor.y;
+        let monW = primaryMonitor.width;
+        let monH = primaryMonitor.height;
 
-            return GLib.SOURCE_REMOVE;
-        });
+        let widgetWidth = (this._container.width && this._container.width > 100) ? this._container.width : 440;
+        let widgetHeight = (this._container.height && this._container.height > 100) ? this._container.height : 190;
+
+        let maxX = Math.max(10, monX + monW - widgetWidth - 10);
+        let maxY = Math.max(10, monY + monH - widgetHeight - 30);
+
+        // If saved position is out of visible screen bounds, recover to Bottom Right
+        if (posX < monX || posX > maxX || posY < monY || posY > maxY) {
+            this._applyPositionPreset(-10);
+            return;
+        }
+
+        this._container.set_position(posX, posY);
     }
 
     _updateClockAndStats() {
@@ -453,10 +466,8 @@ export default class DeskGlowExtension extends Extension {
 
         if (posX < 0) {
             this._applyPositionPreset(posX);
-        } else if (posX >= 0 && posY >= 0) {
-            this._container.set_position(posX, posY);
         } else {
-            this._applyPositionPreset(-1);
+            this._ensureVisiblePosition(posX, posY);
         }
     }
 
