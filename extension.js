@@ -14,6 +14,7 @@ export default class DeskGlowExtension extends Extension {
         this._settingsSignals = [];
         this._stageEventId = null;
         this._dragging = false;
+        this._isHiding = false;
         this._lastAppliedX = -1;
         this._lastAppliedY = -1;
 
@@ -241,7 +242,10 @@ export default class DeskGlowExtension extends Extension {
                 return GLib.SOURCE_CONTINUE;
             }
 
-            let widgetBox = this._container.get_allocation_box();
+            let wx = this._container.x;
+            let wy = this._container.y;
+            let ww = this._container.width || 420;
+            let wh = this._container.height || 180;
             let overlapping = false;
             let actors = global.get_window_actors();
             
@@ -256,17 +260,30 @@ export default class DeskGlowExtension extends Extension {
                 if (!metaWin.is_on_all_workspaces() && metaWin.get_workspace() !== workspaceManager.get_active_workspace()) continue;
 
                 let frame = metaWin.get_frame_rect();
-                if (frame.x < widgetBox.x2 && frame.x + frame.width > widgetBox.x1 &&
-                    frame.y < widgetBox.y2 && frame.y + frame.height > widgetBox.y1) {
+                
+                // Add some padding to intersection to make it feel more natural
+                let pad = 10;
+                if (frame.x < wx + ww + pad && frame.x + frame.width > wx - pad &&
+                    frame.y < wy + wh + pad && frame.y + frame.height > wy - pad) {
                     overlapping = true;
                     break;
                 }
             }
 
-            if (overlapping && this._container.opacity !== 0) {
-                this._container.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
-            } else if (!overlapping && this._container.opacity === 0) {
-                this._container.ease({ opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_IN_QUAD });
+            if (overlapping && !this._isHiding) {
+                this._isHiding = true;
+                this._container.ease({
+                    opacity: 0,
+                    duration: 200,
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD
+                });
+            } else if (!overlapping && this._isHiding) {
+                this._isHiding = false;
+                this._container.ease({
+                    opacity: 255,
+                    duration: 200,
+                    mode: Clutter.AnimationMode.EASE_IN_QUAD
+                });
             }
         } catch (e) {
             global.log(`[DeskGlow] Error in _checkOverlap: ${e}`);
