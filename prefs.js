@@ -388,7 +388,6 @@ export default class DeskGlowPreferences extends ExtensionPreferences {
 
         resetRow.add_suffix(resetBtn);
         groupReset.add(resetRow);
-
-        window.add(page);
     }
 }
+
