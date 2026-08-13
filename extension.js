@@ -101,15 +101,15 @@ export default class DeskGlowExtension extends Extension {
 
         this._container.add_child(this._statsBox);
 
-        // Place container in Main.uiGroup directly BELOW global.window_group
+        // Place container in Main.layoutManager.backgroundGroup or Main.uiGroup
         if (this._container.get_parent()) {
             this._container.get_parent().remove_child(this._container);
         }
 
-        if (global.window_group && Main.uiGroup.contains(global.window_group)) {
+        if (Main.layoutManager.backgroundGroup) {
+            Main.layoutManager.backgroundGroup.add_child(this._container);
+        } else if (global.window_group && Main.uiGroup.contains(global.window_group)) {
             Main.uiGroup.insert_child_below(this._container, global.window_group);
-        } else if (Main.layoutManager.backgroundGroup && Main.uiGroup.contains(Main.layoutManager.backgroundGroup)) {
-            Main.uiGroup.insert_child_above(this._container, Main.layoutManager.backgroundGroup);
         } else {
             Main.uiGroup.insert_child_at_index(this._container, 0);
         }
@@ -143,7 +143,7 @@ export default class DeskGlowExtension extends Extension {
             this._settingsSignals.push(sigId);
         }
 
-        // Apply initial visual settings
+        // Apply initial visual settings & position
         this._applySettings();
 
         // Initial Stats Update & Timer Setup
@@ -154,7 +154,7 @@ export default class DeskGlowExtension extends Extension {
             return GLib.SOURCE_CONTINUE;
         });
 
-        // Set initial position or restore saved position
+        // Set initial position
         this._restorePosition();
     }
 
@@ -291,16 +291,11 @@ export default class DeskGlowExtension extends Extension {
         if (!this._dragging) {
             let posX = this._settings.get_int('position-x');
             let posY = this._settings.get_int('position-y');
-
-            if (posX < 0) {
-                this._applyPositionPreset(posX);
-            } else {
-                this._ensureVisiblePosition(posX, posY);
-            }
+            this._updateWidgetPosition(posX, posY);
         }
     }
 
-    _applyPositionPreset(code) {
+    _updateWidgetPosition(posX, posY) {
         let primaryMonitor = Main.layoutManager.primaryMonitor;
         if (!primaryMonitor || !this._container) return;
 
@@ -309,30 +304,37 @@ export default class DeskGlowExtension extends Extension {
         let monW = primaryMonitor.width;
         let monH = primaryMonitor.height;
 
-        let widgetWidth = (this._container.width && this._container.width > 100) ? this._container.width : 440;
-        let widgetHeight = (this._container.height && this._container.height > 100) ? this._container.height : 190;
+        let [minW, natW] = this._container.get_preferred_width(-1);
+        let [minH, natH] = this._container.get_preferred_height(-1);
 
-        let marginX = 30;
+        let widgetWidth = (natW && natW > 100) ? natW : (this._container.width || 420);
+        let widgetHeight = (natH && natH > 50) ? natH : (this._container.height || 180);
+
+        let marginX = 40;
         let marginY = 50;
         let taskbarOffset = 70;
 
         let targetX = monX + monW - widgetWidth - marginX;
         let targetY = monY + monH - widgetHeight - taskbarOffset;
 
-        if (code === -11) { // Bottom Left
+        if (posX === -11) { // Bottom Left
             targetX = monX + marginX;
             targetY = monY + monH - widgetHeight - taskbarOffset;
-        } else if (code === -12) { // Top Right
+        } else if (posX === -12) { // Top Right
             targetX = monX + monW - widgetWidth - marginX;
             targetY = monY + marginY;
-        } else if (code === -13) { // Top Left
+        } else if (posX === -13) { // Top Left
             targetX = monX + marginX;
             targetY = monY + marginY;
-        } else if (code === -14) { // Center
+        } else if (posX === -14) { // Center
             targetX = monX + Math.round((monW - widgetWidth) / 2);
             targetY = monY + Math.round((monH - widgetHeight) / 2);
-        } // code === -1 or -10 is Bottom Right (default)
+        } else if (posX >= 0 && posY >= 0) { // Custom Pixel position
+            targetX = posX;
+            targetY = posY;
+        } // Default (-1 or -10) is Bottom Right
 
+        // Safe Clamping inside screen boundaries
         let maxX = Math.max(10, monX + monW - widgetWidth - 10);
         let maxY = Math.max(10, monY + monH - widgetHeight - 10);
 
@@ -340,33 +342,6 @@ export default class DeskGlowExtension extends Extension {
         let finalY = Math.min(maxY, Math.max(monY + 10, Math.round(targetY)));
 
         this._container.set_position(finalX, finalY);
-    }
-
-    _ensureVisiblePosition(posX, posY) {
-        let primaryMonitor = Main.layoutManager.primaryMonitor;
-        if (!primaryMonitor || !this._container) {
-            this._container.set_position(posX, posY);
-            return;
-        }
-
-        let monX = primaryMonitor.x;
-        let monY = primaryMonitor.y;
-        let monW = primaryMonitor.width;
-        let monH = primaryMonitor.height;
-
-        let widgetWidth = (this._container.width && this._container.width > 100) ? this._container.width : 440;
-        let widgetHeight = (this._container.height && this._container.height > 100) ? this._container.height : 190;
-
-        let maxX = Math.max(10, monX + monW - widgetWidth - 10);
-        let maxY = Math.max(10, monY + monH - widgetHeight - 30);
-
-        // If saved position is out of visible screen bounds, recover to Bottom Right
-        if (posX < monX || posX > maxX || posY < monY || posY > maxY) {
-            this._applyPositionPreset(-10);
-            return;
-        }
-
-        this._container.set_position(posX, posY);
     }
 
     _updateClockAndStats() {
@@ -463,12 +438,7 @@ export default class DeskGlowExtension extends Extension {
     _restorePosition() {
         let posX = this._settings.get_int('position-x');
         let posY = this._settings.get_int('position-y');
-
-        if (posX < 0) {
-            this._applyPositionPreset(posX);
-        } else {
-            this._ensureVisiblePosition(posX, posY);
-        }
+        this._updateWidgetPosition(posX, posY);
     }
 
     disable() {
