@@ -4,6 +4,7 @@ import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import Meta from 'gi://Meta';
 
 import * as SysInfo from './sysinfo.js';
 
@@ -235,35 +236,40 @@ export default class DeskGlowExtension extends Extension {
     }
 
     _checkOverlap() {
-        if (!this._container || !this._container.get_parent() || this._dragging) {
-            return GLib.SOURCE_CONTINUE;
-        }
-
-        let widgetBox = this._container.get_allocation_box();
-        let overlapping = false;
-        let actors = global.get_window_actors();
-        
-        for (let actor of actors) {
-            let metaWin = actor.get_meta_window();
-            
-            if (metaWin.get_window_type() === Meta.WindowType.DESKTOP) continue;
-            if (metaWin.is_hidden() || metaWin.is_minimized()) continue;
-            
-            let workspaceManager = global.workspace_manager;
-            if (!metaWin.is_on_all_workspaces() && metaWin.get_workspace() !== workspaceManager.get_active_workspace()) continue;
-
-            let frame = metaWin.get_frame_rect();
-            if (frame.x < widgetBox.x2 && frame.x + frame.width > widgetBox.x1 &&
-                frame.y < widgetBox.y2 && frame.y + frame.height > widgetBox.y1) {
-                overlapping = true;
-                break;
+        try {
+            if (!this._container || !this._container.get_parent() || this._dragging) {
+                return GLib.SOURCE_CONTINUE;
             }
-        }
 
-        if (overlapping && this._container.opacity !== 0) {
-            this._container.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
-        } else if (!overlapping && this._container.opacity === 0) {
-            this._container.ease({ opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_IN_QUAD });
+            let widgetBox = this._container.get_allocation_box();
+            let overlapping = false;
+            let actors = global.get_window_actors();
+            
+            for (let actor of actors) {
+                let metaWin = actor.get_meta_window();
+                if (!metaWin) continue;
+                
+                if (metaWin.get_window_type() === Meta.WindowType.DESKTOP) continue;
+                if (metaWin.is_hidden() || metaWin.is_minimized()) continue;
+                
+                let workspaceManager = global.workspace_manager;
+                if (!metaWin.is_on_all_workspaces() && metaWin.get_workspace() !== workspaceManager.get_active_workspace()) continue;
+
+                let frame = metaWin.get_frame_rect();
+                if (frame.x < widgetBox.x2 && frame.x + frame.width > widgetBox.x1 &&
+                    frame.y < widgetBox.y2 && frame.y + frame.height > widgetBox.y1) {
+                    overlapping = true;
+                    break;
+                }
+            }
+
+            if (overlapping && this._container.opacity !== 0) {
+                this._container.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+            } else if (!overlapping && this._container.opacity === 0) {
+                this._container.ease({ opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_IN_QUAD });
+            }
+        } catch (e) {
+            global.log(`[DeskGlow] Error in _checkOverlap: ${e}`);
         }
         
         return GLib.SOURCE_CONTINUE;
