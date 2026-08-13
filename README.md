@@ -144,20 +144,12 @@ DeskGlow/
 
 ---
 
-## 🏷️ GitHub Topics & SEO Keywords (For Repository Settings)
-
-Add these topics to your GitHub repository to increase search ranking:
-
-`gnome-extension` • `zorin-os` • `desktop-clock` • `system-monitor` • `rainmeter-alternative` • `conky-alternative` • `glassmorphism` • `gtk4` • `libadwaita` • `linux-desktop-widget` • `ubuntu-widget`
-
----
-
 ## 👤 Author & Developer / ডেভেলপার
 
 **MD. Tanvir Ahamed Siddike**
 
-- **GitHub**: [github.com/tanvirahamed](https://github.com/)
-- **Project Repository**: DeskGlow GNOME Extension
+- **GitHub**: [github.com/lurek](https://github.com/lurek)
+- **Project Repository**: [DeskGlow GNOME Extension](https://github.com/lurek/DeskGlow)
 
 ---
 
