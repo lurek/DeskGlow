@@ -2,7 +2,7 @@ import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
-
+import GLib from 'gi://GLib';
 export default class DeskGlowPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         window.set_default_size(660, 680);

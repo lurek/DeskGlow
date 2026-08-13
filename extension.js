@@ -13,6 +13,8 @@ export default class DeskGlowExtension extends Extension {
         this._settingsSignals = [];
         this._stageEventId = null;
         this._dragging = false;
+        this._lastAppliedX = -1;
+        this._lastAppliedY = -1;
 
         // Main Container Widget
         this._container = new St.BoxLayout({
@@ -101,18 +103,13 @@ export default class DeskGlowExtension extends Extension {
 
         this._container.add_child(this._statsBox);
 
-        // Place container in Main.layoutManager.backgroundGroup or Main.uiGroup
-        if (this._container.get_parent()) {
-            this._container.get_parent().remove_child(this._container);
-        }
+        this._ensureLayering();
 
-        if (Main.layoutManager.backgroundGroup) {
-            Main.layoutManager.backgroundGroup.add_child(this._container);
-        } else if (global.window_group && Main.uiGroup.contains(global.window_group)) {
-            Main.uiGroup.insert_child_below(this._container, global.window_group);
-        } else {
-            Main.uiGroup.insert_child_at_index(this._container, 0);
-        }
+        // Retry layering after 2 seconds to ensure DING and window_group are fully loaded
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+            this._ensureLayering();
+            return GLib.SOURCE_REMOVE;
+        });
 
         // Enable Drag & Drop
         this._setupDragging();
@@ -215,6 +212,61 @@ export default class DeskGlowExtension extends Extension {
         }
 
         return valueLabel;
+    }
+
+    _ensureLayering() {
+        if (!this._container) return;
+
+        if (this._container.get_parent()) {
+            this._container.get_parent().remove_child(this._container);
+        }
+
+        // Place ABOVE all windows so it's not hidden by DING
+        if (global.window_group && Main.uiGroup.contains(global.window_group)) {
+            Main.uiGroup.insert_child_above(this._container, global.window_group);
+        } else {
+            Main.layoutManager.addChrome(this._container, { trackFullscreen: false });
+        }
+
+        // Start smart hide polling
+        if (!this._overlapTimeoutId) {
+            this._overlapTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => this._checkOverlap());
+        }
+    }
+
+    _checkOverlap() {
+        if (!this._container || !this._container.get_parent() || this._dragging) {
+            return GLib.SOURCE_CONTINUE;
+        }
+
+        let widgetBox = this._container.get_allocation_box();
+        let overlapping = false;
+        let actors = global.get_window_actors();
+        
+        for (let actor of actors) {
+            let metaWin = actor.get_meta_window();
+            
+            if (metaWin.get_window_type() === Meta.WindowType.DESKTOP) continue;
+            if (metaWin.is_hidden() || metaWin.is_minimized()) continue;
+            
+            let workspaceManager = global.workspace_manager;
+            if (!metaWin.is_on_all_workspaces() && metaWin.get_workspace() !== workspaceManager.get_active_workspace()) continue;
+
+            let frame = metaWin.get_frame_rect();
+            if (frame.x < widgetBox.x2 && frame.x + frame.width > widgetBox.x1 &&
+                frame.y < widgetBox.y2 && frame.y + frame.height > widgetBox.y1) {
+                overlapping = true;
+                break;
+            }
+        }
+
+        if (overlapping && this._container.opacity !== 0) {
+            this._container.ease({ opacity: 0, duration: 200, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
+        } else if (!overlapping && this._container.opacity === 0) {
+            this._container.ease({ opacity: 255, duration: 200, mode: Clutter.AnimationMode.EASE_IN_QUAD });
+        }
+        
+        return GLib.SOURCE_CONTINUE;
     }
 
     _applySettings() {
@@ -342,6 +394,20 @@ export default class DeskGlowExtension extends Extension {
         let finalY = Math.min(maxY, Math.max(monY + 10, Math.round(targetY)));
 
         this._container.set_position(finalX, finalY);
+
+        if (this._lastAppliedX === finalX && this._lastAppliedY === finalY) {
+            return;
+        }
+
+        this._lastAppliedX = finalX;
+        this._lastAppliedY = finalY;
+
+        if (posX !== finalX) {
+            this._settings.set_int('position-x', finalX);
+        }
+        if (posY !== finalY) {
+            this._settings.set_int('position-y', finalY);
+        }
     }
 
     _updateClockAndStats() {
@@ -443,6 +509,16 @@ export default class DeskGlowExtension extends Extension {
 
     disable() {
         this._stopDragging();
+
+        if (this._overlapTimeoutId) {
+            GLib.source_remove(this._overlapTimeoutId);
+            this._overlapTimeoutId = null;
+        }
+
+        if (this._updateTimer) {
+            GLib.source_remove(this._updateTimer);
+            this._updateTimer = null;
+        }
 
         if (this._timerId) {
             GLib.source_remove(this._timerId);
