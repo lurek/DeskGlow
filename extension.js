@@ -223,67 +223,14 @@ export default class DeskGlowExtension extends Extension {
             this._container.get_parent().remove_child(this._container);
         }
 
-        // Place ABOVE all windows so it's not hidden by DING
-        if (global.window_group && Main.uiGroup.contains(global.window_group)) {
-            Main.uiGroup.insert_child_above(this._container, global.window_group);
+        // Place at the very bottom of the window_group
+        // This physically stacks it above DING (which is in the background layer)
+        // but completely BELOW all application windows!
+        if (global.window_group) {
+            global.window_group.insert_child_at_index(this._container, 0);
         } else {
             Main.layoutManager.addChrome(this._container, { trackFullscreen: false });
         }
-
-        // Start smart hide polling
-        if (!this._overlapTimeoutId) {
-            this._overlapTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => this._checkOverlap());
-        }
-    }
-
-    _checkOverlap() {
-        try {
-            if (!this._container || !this._container.get_parent() || this._dragging) {
-                return GLib.SOURCE_CONTINUE;
-            }
-
-            let wx = this._container.x;
-            let wy = this._container.y;
-            let ww = this._container.width || 420;
-            let wh = this._container.height || 180;
-            let overlapping = false;
-            let actors = global.get_window_actors();
-            
-            for (let actor of actors) {
-                let metaWin = actor.get_meta_window();
-                if (!metaWin) continue;
-                
-                if (metaWin.get_window_type() === Meta.WindowType.DESKTOP) continue;
-                if (metaWin.is_hidden() || metaWin.is_minimized()) continue;
-                
-                let workspaceManager = global.workspace_manager;
-                if (!metaWin.is_on_all_workspaces() && metaWin.get_workspace() !== workspaceManager.get_active_workspace()) continue;
-
-                let frame = metaWin.get_frame_rect();
-                
-                // Add some padding to intersection to make it feel more natural
-                let pad = 10;
-                let doesOverlap = (frame.x < wx + ww + pad && frame.x + frame.width > wx - pad &&
-                                   frame.y < wy + wh + pad && frame.y + frame.height > wy - pad);
-
-                if (doesOverlap) {
-                    overlapping = true;
-                    break;
-                }
-            }
-            
-            if (overlapping && !this._isHiding) {
-                this._isHiding = true;
-                this._container.opacity = 0;
-            } else if (!overlapping && this._isHiding) {
-                this._isHiding = false;
-                this._container.opacity = 255;
-            }
-        } catch (e) {
-            global.log(`[DeskGlow] Error in _checkOverlap: ${e}`);
-        }
-        
-        return GLib.SOURCE_CONTINUE;
     }
 
     _applySettings() {
@@ -526,11 +473,6 @@ export default class DeskGlowExtension extends Extension {
 
     disable() {
         this._stopDragging();
-
-        if (this._overlapTimeoutId) {
-            GLib.source_remove(this._overlapTimeoutId);
-            this._overlapTimeoutId = null;
-        }
 
         if (this._updateTimer) {
             GLib.source_remove(this._updateTimer);
