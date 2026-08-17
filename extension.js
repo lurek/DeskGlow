@@ -219,18 +219,18 @@ export default class DeskGlowExtension extends Extension {
     _ensureLayering() {
         if (!this._container) return;
 
-        if (this._container.get_parent()) {
-            this._container.get_parent().remove_child(this._container);
+        const parent = this._container.get_parent();
+        if (parent === Main.layoutManager.uiGroup) {
+            Main.layoutManager.removeChrome(this._container);
+        } else if (parent === Main.layoutManager._backgroundGroup) {
+            Main.layoutManager._backgroundGroup.remove_child(this._container);
+        } else if (parent) {
+            parent.remove_child(this._container);
         }
 
-        // Place at the very bottom of the window_group
-        // This physically stacks it above DING (which is in the background layer)
-        // but completely BELOW all application windows!
-        if (global.window_group) {
-            global.window_group.insert_child_at_index(this._container, 0);
-        } else {
-            Main.layoutManager.addChrome(this._container, { trackFullscreen: false });
-        }
+        // Add to the native GNOME background group.
+        // This natively places it under all application windows, but on top of the wallpaper/DING icons
+        Main.layoutManager._backgroundGroup.add_child(this._container);
     }
 
     _applySettings() {
